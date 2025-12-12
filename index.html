@@ -728,14 +728,21 @@
 
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
         // Configuration - Hidden from users
         const CONFIG = {
             WEBHOOK_URL: 'https://maxai-tech.app.n8n.cloud/webhook/kb-ai-upload',
+            SUPABASE_URL: 'https://drrdcsbwfbtgxntyfjjb.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycmRjc2J3ZmJ0Z3hudHlmampiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNjkxOTgsImV4cCI6MjA4MDk0NTE5OH0.Up0n7ZUmsZ5OwJjFHl7zimxFA7DYSm-EMdCmm26843s',
             MAX_FILES: 20,
             MAX_FILE_SIZE: 10 * 1024 * 1024 // 10MB
         };
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         // State
         let selectedFiles = [];
@@ -946,35 +953,130 @@
             actionSection.style.display = 'block';
         }
 
-        function downloadExcel(type) {
-            // This would typically fetch data from Supabase
-            // For now, we'll create a sample Excel structure
-            let headers, filename;
-            
-            switch(type) {
-                case 'bank':
-                    headers = ['檔案名稱', '銀行名稱', '帳戶持有人', '存款金額', '貸款金額', '淨額', '日期', '貨幣', '備註'];
-                    filename = '銀行單據_' + formatDate(new Date()) + '.xlsx';
-                    break;
-                case 'rental':
-                    headers = ['檔案名稱', '發票日期', '合約編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
-                    filename = '租務單據_' + formatDate(new Date()) + '.xlsx';
-                    break;
-                case 'general':
-                    headers = ['檔案名稱', '發票日期', '發票編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
-                    filename = '常規單據_' + formatDate(new Date()) + '.xlsx';
-                    break;
-            }
+        async function downloadExcel(type) {
+            try {
+                let data, headers, filename, tableName;
+                
+                switch(type) {
+                    case 'bank':
+                        tableName = 'bank_statements';
+                        headers = [
+                            '檔案名稱', '銀行名稱', '帳戶持有人', '帳戶號碼', 
+                            '定期存款', '儲蓄帳戶', '往來帳戶', '貸款帳戶',
+                            '按揭', '其他貸款', '信用卡', '保險',
+                            '投資帳戶', '退休帳戶', '保險箱', '信託',
+                            '總存款', '總貸款', '淨額',
+                            '結單日期', '貨幣', '分行', '客戶經理', '備註'
+                        ];
+                        filename = '銀行單據_' + formatDate(new Date()) + '.xlsx';
+                        break;
+                    case 'rental':
+                        tableName = 'rental_leases';
+                        headers = ['檔案名稱', '發票日期', '合約編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
+                        filename = '租務單據_' + formatDate(new Date()) + '.xlsx';
+                        break;
+                    case 'general':
+                        tableName = 'general_invoices';
+                        headers = ['檔案名稱', '發票日期', '發票編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
+                        filename = '常規單據_' + formatDate(new Date()) + '.xlsx';
+                        break;
+                }
 
-            // Create workbook
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet([headers]);
-            
-            // Add some styling info (column widths)
-            ws['!cols'] = headers.map(() => ({ wch: 20 }));
-            
-            XLSX.utils.book_append_sheet(wb, ws, '單據資料');
-            XLSX.writeFile(wb, filename);
+                // Show loading state
+                const btn = document.getElementById('download' + type.charAt(0).toUpperCase() + type.slice(1));
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span>下載中...</span>';
+                btn.disabled = true;
+
+                // Fetch data from Supabase
+                const { data: records, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    throw new Error('無法獲取數據：' + error.message);
+                }
+
+                if (!records || records.length === 0) {
+                    alert('目前沒有' + (type === 'bank' ? '銀行單據' : type === 'rental' ? '租務單據' : '常規單據') + '數據');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Transform data to rows
+                let rows = [headers];
+                
+                if (type === 'bank') {
+                    records.forEach(record => {
+                        rows.push([
+                            record.source_filename || '',
+                            record.bank_name || '',
+                            record.account_holder || '',
+                            record.account_number || '',
+                            record.deposits_fixed_or_at_call || '',
+                            record.savings_accounts || '',
+                            record.current_account_balance || '',
+                            record.loan_account_debit_balance || '',
+                            record.mortgages || '',
+                            record.other_loans || '',
+                            record.credit_cards || '',
+                            record.insurance_policies || '',
+                            record.investment_accounts || '',
+                            record.retirement_accounts || '',
+                            record.safe_deposit_boxes || '',
+                            record.trusts_managed || '',
+                            record.total_deposits || '',
+                            record.total_loans || '',
+                            record.net_position || '',
+                            record.statement_date || '',
+                            record.currency || '',
+                            record.branch || '',
+                            record.relationship_manager || '',
+                            record.remarks || ''
+                        ]);
+                    });
+                } else {
+                    // rental_leases and general_invoices have same structure
+                    records.forEach(record => {
+                        rows.push([
+                            record.source_filename || '',
+                            record.invoice_date || '',
+                            record.invoice_contract_number || '',
+                            record.vendor_or_customer || '',
+                            record.description || '',
+                            record.currency || '',
+                            record.amount || '',
+                            record.amount_mop || '',
+                            record.remarks || ''
+                        ]);
+                    });
+                }
+
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                
+                // Set column widths
+                ws['!cols'] = headers.map((h, i) => ({ wch: Math.max(h.length * 2, 15) }));
+                
+                XLSX.utils.book_append_sheet(wb, ws, '單據資料');
+                XLSX.writeFile(wb, filename);
+
+                // Restore button
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('下載失敗：' + error.message);
+                
+                // Restore button state
+                const btn = document.getElementById('download' + type.charAt(0).toUpperCase() + type.slice(1));
+                btn.innerHTML = btn.innerHTML.replace('下載中...', type === 'bank' ? '銀行單據 Excel' : type === 'rental' ? '租務單據 Excel' : '常規單據 Excel');
+                btn.disabled = false;
+            }
         }
 
         function formatDate(date) {
