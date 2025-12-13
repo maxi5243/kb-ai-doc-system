@@ -482,6 +482,24 @@
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
+            flex-direction: column;
+        }
+
+        .download-category {
+            margin-bottom: 15px;
+        }
+
+        .download-category h5 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--primary-gold);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .download-category .download-btn {
+            margin-bottom: 8px;
         }
 
         .download-btn {
@@ -497,6 +515,8 @@
             font-family: 'Noto Sans TC', sans-serif;
             font-size: 14px;
             color: var(--text-dark);
+            width: 100%;
+            text-align: left;
         }
 
         .download-btn:hover {
@@ -700,19 +720,8 @@
                     </div>
                     <div class="download-section">
                         <h4>下載處理結果</h4>
-                        <div class="download-buttons">
-                            <button class="download-btn" id="downloadBank">
-                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                                銀行單據 Excel
-                            </button>
-                            <button class="download-btn" id="downloadRental">
-                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                                租務單據 Excel
-                            </button>
-                            <button class="download-btn" id="downloadGeneral">
-                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                                常規單據 Excel
-                            </button>
+                        <div class="download-buttons" id="downloadButtons">
+                            <!-- Download buttons will be dynamically generated -->
                         </div>
                     </div>
                 </div>
@@ -747,6 +756,8 @@
         // State
         let selectedFiles = [];
         let processingResults = null;
+        let currentBatchId = null;
+        let currentCounts = { bank: 0, rental: 0, general: 0 };
 
         // DOM Elements
         const uploadZone = document.getElementById('uploadZone');
@@ -944,9 +955,22 @@
             progressSection.classList.remove('active');
             resultsSection.classList.add('active');
             
+            // Save batch_id from N8N response
+            currentBatchId = result.batch_id || null;
+            
+            // Save counts
+            currentCounts = {
+                bank: result.bank_count || 0,
+                rental: result.rental_count || 0,
+                general: result.general_count || 0
+            };
+            
             document.getElementById('totalFiles').textContent = selectedFiles.length;
-            document.getElementById('bankCount').textContent = result.bank_count || 0;
-            document.getElementById('otherCount').textContent = (result.rental_count || 0) + (result.general_count || 0);
+            document.getElementById('bankCount').textContent = currentCounts.bank;
+            document.getElementById('otherCount').textContent = currentCounts.rental + currentCounts.general;
+
+            // Generate download buttons dynamically
+            generateDownloadButtons();
 
             // Reset for next upload
             selectedFiles = [];
@@ -954,9 +978,93 @@
             actionSection.style.display = 'block';
         }
 
-        async function downloadExcel(type) {
+        async function generateDownloadButtons() {
+            const container = document.getElementById('downloadButtons');
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">正在載入下載選項...</p>';
+
+            if (!currentBatchId) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">沒有可下載的數據</p>';
+                return;
+            }
+
+            let buttonsHTML = '';
+
+            // Fetch bank statements for this batch
+            if (currentCounts.bank > 0) {
+                const { data: bankRecords } = await supabase
+                    .from('bank_statements')
+                    .select('id, source_filename')
+                    .eq('batch_id', currentBatchId);
+
+                if (bankRecords && bankRecords.length > 0) {
+                    buttonsHTML += '<div class="download-category"><h5>銀行單據</h5>';
+                    bankRecords.forEach(record => {
+                        const displayName = record.source_filename ? record.source_filename.replace(/\.[^/.]+$/, '') : '銀行單據';
+                        buttonsHTML += `
+                            <button class="download-btn" onclick="downloadSingleExcel('bank', ${record.id}, '${displayName}')">
+                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                ${displayName}.xlsx
+                            </button>
+                        `;
+                    });
+                    buttonsHTML += '</div>';
+                }
+            }
+
+            // Fetch rental leases for this batch
+            if (currentCounts.rental > 0) {
+                const { data: rentalRecords } = await supabase
+                    .from('rental_leases')
+                    .select('id, source_filename')
+                    .eq('batch_id', currentBatchId);
+
+                if (rentalRecords && rentalRecords.length > 0) {
+                    buttonsHTML += '<div class="download-category"><h5>租務單據</h5>';
+                    rentalRecords.forEach(record => {
+                        const displayName = record.source_filename ? record.source_filename.replace(/\.[^/.]+$/, '') : '租務單據';
+                        buttonsHTML += `
+                            <button class="download-btn" onclick="downloadSingleExcel('rental', ${record.id}, '${displayName}')">
+                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                ${displayName}.xlsx
+                            </button>
+                        `;
+                    });
+                    buttonsHTML += '</div>';
+                }
+            }
+
+            // Fetch general invoices for this batch
+            if (currentCounts.general > 0) {
+                const { data: generalRecords } = await supabase
+                    .from('general_invoices')
+                    .select('id, source_filename')
+                    .eq('batch_id', currentBatchId);
+
+                if (generalRecords && generalRecords.length > 0) {
+                    buttonsHTML += '<div class="download-category"><h5>常規單據</h5>';
+                    generalRecords.forEach(record => {
+                        const displayName = record.source_filename ? record.source_filename.replace(/\.[^/.]+$/, '') : '常規單據';
+                        buttonsHTML += `
+                            <button class="download-btn" onclick="downloadSingleExcel('general', ${record.id}, '${displayName}')">
+                                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                ${displayName}.xlsx
+                            </button>
+                        `;
+                    });
+                    buttonsHTML += '</div>';
+                }
+            }
+
+            if (buttonsHTML === '') {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">沒有可下載的數據</p>';
+            } else {
+                container.innerHTML = buttonsHTML;
+            }
+        }
+
+        async function downloadSingleExcel(type, recordId, filename) {
             try {
-                let data, headers, filename, tableName;
+                let tableName, headers;
                 
                 switch(type) {
                     case 'bank':
@@ -969,90 +1077,70 @@
                             '總存款', '總貸款', '淨額',
                             '結單日期', '貨幣', '分行', '客戶經理', '備註'
                         ];
-                        filename = '銀行單據_' + formatDate(new Date()) + '.xlsx';
                         break;
                     case 'rental':
                         tableName = 'rental_leases';
                         headers = ['檔案名稱', '發票日期', '合約編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
-                        filename = '租務單據_' + formatDate(new Date()) + '.xlsx';
                         break;
                     case 'general':
                         tableName = 'general_invoices';
                         headers = ['檔案名稱', '發票日期', '發票編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
-                        filename = '常規單據_' + formatDate(new Date()) + '.xlsx';
                         break;
                 }
 
-                // Show loading state
-                const btn = document.getElementById('download' + type.charAt(0).toUpperCase() + type.slice(1));
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<span>下載中...</span>';
-                btn.disabled = true;
-
-                // Fetch data from Supabase
-                const { data: records, error } = await supabase
+                // Fetch single record from Supabase
+                const { data: record, error } = await supabase
                     .from(tableName)
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .eq('id', recordId)
+                    .single();
 
                 if (error) {
                     throw new Error('無法獲取數據：' + error.message);
-                }
-
-                if (!records || records.length === 0) {
-                    alert('目前沒有' + (type === 'bank' ? '銀行單據' : type === 'rental' ? '租務單據' : '常規單據') + '數據');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    return;
                 }
 
                 // Transform data to rows
                 let rows = [headers];
                 
                 if (type === 'bank') {
-                    records.forEach(record => {
-                        rows.push([
-                            record.source_filename || '',
-                            record.bank_name || '',
-                            record.account_holder || '',
-                            record.account_number || '',
-                            record.deposits_fixed_or_at_call || '',
-                            record.savings_accounts || '',
-                            record.current_account_balance || '',
-                            record.loan_account_debit_balance || '',
-                            record.mortgages || '',
-                            record.other_loans || '',
-                            record.credit_cards || '',
-                            record.insurance_policies || '',
-                            record.investment_accounts || '',
-                            record.retirement_accounts || '',
-                            record.safe_deposit_boxes || '',
-                            record.trusts_managed || '',
-                            record.total_deposits || '',
-                            record.total_loans || '',
-                            record.net_position || '',
-                            record.statement_date || '',
-                            record.currency || '',
-                            record.branch || '',
-                            record.relationship_manager || '',
-                            record.remarks || ''
-                        ]);
-                    });
+                    rows.push([
+                        record.source_filename || '',
+                        record.bank_name || '',
+                        record.account_holder || '',
+                        record.account_number || '',
+                        record.deposits_fixed_or_at_call || '',
+                        record.savings_accounts || '',
+                        record.current_account_balance || '',
+                        record.loan_account_debit_balance || '',
+                        record.mortgages || '',
+                        record.other_loans || '',
+                        record.credit_cards || '',
+                        record.insurance_policies || '',
+                        record.investment_accounts || '',
+                        record.retirement_accounts || '',
+                        record.safe_deposit_boxes || '',
+                        record.trusts_managed || '',
+                        record.total_deposits || '',
+                        record.total_loans || '',
+                        record.net_position || '',
+                        record.statement_date || '',
+                        record.currency || '',
+                        record.branch || '',
+                        record.relationship_manager || '',
+                        record.remarks || ''
+                    ]);
                 } else {
-                    // rental_leases and general_invoices have same structure
-                    records.forEach(record => {
-                        rows.push([
-                            record.source_filename || '',
-                            record.invoice_date || '',
-                            record.invoice_contract_number || '',
-                            record.vendor_or_customer || '',
-                            record.description || '',
-                            record.currency || '',
-                            record.amount || '',
-                            record.amount_mop || '',
-                            record.remarks || ''
-                        ]);
-                    });
+                    rows.push([
+                        record.source_filename || '',
+                        record.invoice_date || '',
+                        record.invoice_contract_number || '',
+                        record.vendor_or_customer || '',
+                        record.description || '',
+                        record.currency || '',
+                        record.amount || '',
+                        record.amount_mop || '',
+                        record.remarks || ''
+                    ]);
                 }
 
                 // Create workbook
@@ -1063,20 +1151,11 @@
                 ws['!cols'] = headers.map((h, i) => ({ wch: Math.max(h.length * 2, 15) }));
                 
                 XLSX.utils.book_append_sheet(wb, ws, '單據資料');
-                XLSX.writeFile(wb, filename);
-
-                // Restore button
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                XLSX.writeFile(wb, filename + '.xlsx');
 
             } catch (error) {
                 console.error('Download error:', error);
                 alert('下載失敗：' + error.message);
-                
-                // Restore button state
-                const btn = document.getElementById('download' + type.charAt(0).toUpperCase() + type.slice(1));
-                btn.innerHTML = btn.innerHTML.replace('下載中...', type === 'bank' ? '銀行單據 Excel' : type === 'rental' ? '租務單據 Excel' : '常規單據 Excel');
-                btn.disabled = false;
             }
         }
 
