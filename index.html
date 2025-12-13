@@ -1064,27 +1064,17 @@
 
         async function downloadSingleExcel(type, recordId, filename) {
             try {
-                let tableName, headers;
+                let tableName;
                 
                 switch(type) {
                     case 'bank':
                         tableName = 'bank_statements';
-                        headers = [
-                            '檔案名稱', '銀行名稱', '帳戶持有人', '帳戶號碼', 
-                            '定期存款', '儲蓄帳戶', '往來帳戶', '貸款帳戶',
-                            '按揭', '其他貸款', '信用卡', '保險',
-                            '投資帳戶', '退休帳戶', '保險箱', '信託',
-                            '總存款', '總貸款', '淨額',
-                            '結單日期', '貨幣', '分行', '客戶經理', '備註'
-                        ];
                         break;
                     case 'rental':
                         tableName = 'rental_leases';
-                        headers = ['檔案名稱', '發票日期', '合約編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
                         break;
                     case 'general':
                         tableName = 'general_invoices';
-                        headers = ['檔案名稱', '發票日期', '發票編號', '供應商/客戶', '描述', '貨幣', '金額', '澳門幣金額', '備註'];
                         break;
                 }
 
@@ -1099,56 +1089,99 @@
                     throw new Error('無法獲取數據：' + error.message);
                 }
 
-                // Transform data to rows
-                let rows = [headers];
-                
-                if (type === 'bank') {
-                    rows.push([
-                        record.source_filename || '',
-                        record.bank_name || '',
-                        record.account_holder || '',
-                        record.account_number || '',
-                        record.deposits_fixed_or_at_call || '',
-                        record.savings_accounts || '',
-                        record.current_account_balance || '',
-                        record.loan_account_debit_balance || '',
-                        record.mortgages || '',
-                        record.other_loans || '',
-                        record.credit_cards || '',
-                        record.insurance_policies || '',
-                        record.investment_accounts || '',
-                        record.retirement_accounts || '',
-                        record.safe_deposit_boxes || '',
-                        record.trusts_managed || '',
-                        record.total_deposits || '',
-                        record.total_loans || '',
-                        record.net_position || '',
-                        record.statement_date || '',
-                        record.currency || '',
-                        record.branch || '',
-                        record.relationship_manager || '',
-                        record.remarks || ''
-                    ]);
-                } else {
-                    rows.push([
-                        record.source_filename || '',
-                        record.invoice_date || '',
-                        record.invoice_contract_number || '',
-                        record.vendor_or_customer || '',
-                        record.description || '',
-                        record.currency || '',
-                        record.amount || '',
-                        record.amount_mop || '',
-                        record.remarks || ''
-                    ]);
-                }
-
                 // Create workbook
                 const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(rows);
+                let ws;
                 
-                // Set column widths
-                ws['!cols'] = headers.map((h, i) => ({ wch: Math.max(h.length * 2, 15) }));
+                if (type === 'bank') {
+                    // Vertical layout for bank statements
+                    const rows = [
+                        ['銀行單據確認書'],
+                        [''],
+                        ['基本資料', ''],
+                        ['檔案名稱', record.source_filename || ''],
+                        ['銀行名稱', record.bank_name || ''],
+                        ['帳戶持有人', record.account_holder || ''],
+                        ['帳戶號碼', record.account_number || ''],
+                        ['結單日期', record.statement_date || ''],
+                        ['貨幣', record.currency || ''],
+                        ['分行', record.branch || ''],
+                        ['客戶經理', record.relationship_manager || ''],
+                        [''],
+                        ['存款帳戶', ''],
+                        ['定期存款', record.deposits_fixed_or_at_call || 'N/A'],
+                        ['儲蓄帳戶', record.savings_accounts || 'N/A'],
+                        ['往來帳戶', record.current_account_balance || 'N/A'],
+                        [''],
+                        ['貸款帳戶', ''],
+                        ['貸款帳戶餘額', record.loan_account_debit_balance || 'N/A'],
+                        ['按揭', record.mortgages || 'N/A'],
+                        ['其他貸款', record.other_loans || 'N/A'],
+                        ['信用卡', record.credit_cards || 'N/A'],
+                        [''],
+                        ['其他資產', ''],
+                        ['保險', record.insurance_policies || 'N/A'],
+                        ['投資帳戶', record.investment_accounts || 'N/A'],
+                        ['退休帳戶', record.retirement_accounts || 'N/A'],
+                        ['保險箱', record.safe_deposit_boxes || 'N/A'],
+                        ['信託', record.trusts_managed || 'N/A'],
+                        [''],
+                        ['總結', ''],
+                        ['總存款', record.total_deposits || ''],
+                        ['總貸款', record.total_loans || ''],
+                        ['淨額', record.net_position || ''],
+                        [''],
+                        ['備註', ''],
+                        [record.remarks || '無']
+                    ];
+                    
+                    ws = XLSX.utils.aoa_to_sheet(rows);
+                    
+                    // Set column widths
+                    ws['!cols'] = [
+                        { wch: 15 },  // Label column
+                        { wch: 80 }   // Value column (wider for long content)
+                    ];
+                    
+                    // Merge title cell
+                    ws['!merges'] = [
+                        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+                    ];
+                    
+                } else {
+                    // Vertical layout for rental and general invoices
+                    const rows = [
+                        [type === 'rental' ? '租務單據' : '常規單據'],
+                        [''],
+                        ['基本資料', ''],
+                        ['檔案名稱', record.source_filename || ''],
+                        ['發票日期', record.invoice_date || ''],
+                        [type === 'rental' ? '合約編號' : '發票編號', record.invoice_contract_number || ''],
+                        ['供應商/客戶', record.vendor_or_customer || ''],
+                        [''],
+                        ['金額資料', ''],
+                        ['描述', record.description || ''],
+                        ['貨幣', record.currency || ''],
+                        ['金額', record.amount || ''],
+                        ['澳門幣金額', record.amount_mop || ''],
+                        [''],
+                        ['備註', ''],
+                        [record.remarks || '無']
+                    ];
+                    
+                    ws = XLSX.utils.aoa_to_sheet(rows);
+                    
+                    // Set column widths
+                    ws['!cols'] = [
+                        { wch: 15 },
+                        { wch: 60 }
+                    ];
+                    
+                    // Merge title cell
+                    ws['!merges'] = [
+                        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+                    ];
+                }
                 
                 XLSX.utils.book_append_sheet(wb, ws, '單據資料');
                 XLSX.writeFile(wb, filename + '.xlsx');
