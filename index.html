@@ -957,7 +957,7 @@
 
             try {
                 // Update progress
-                updateProgress(20, '正在準備檔案...', '轉換檔案格式中');
+                updateProgress(10, '正在準備檔案...', '轉換檔案格式中');
 
                 // Convert files to base64
                 const filesData = await Promise.all(
@@ -968,13 +968,9 @@
                     }))
                 );
 
-                updateProgress(40, '正在上傳...', '傳送檔案至伺服器');
+                updateProgress(20, '正在上傳...', '傳送檔案至伺服器');
 
-                // 設定超時時間為5分鐘（300秒）
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 300000);
-
-                // Send to webhook
+                // Send to webhook (now returns immediately with batch_id)
                 const response = await fetch(CONFIG.WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
@@ -984,27 +980,24 @@
                     body: JSON.stringify({
                         totalFiles: selectedFiles.length,
                         files: filesData
-                    }),
-                    signal: controller.signal
+                    })
                 });
-
-                clearTimeout(timeoutId);
-
-                updateProgress(70, '正在處理...', 'AI 正在分析文件內容');
 
                 if (!response.ok) {
                     throw new Error('伺服器處理失敗');
                 }
 
                 const result = await response.json();
-                processingResults = result;
+                
+                if (!result.batch_id) {
+                    throw new Error('未收到處理批次ID');
+                }
 
-                updateProgress(100, '處理完成！', '正在準備結果');
+                currentBatchId = result.batch_id;
+                updateProgress(30, '處理中...', 'AI 正在分析文件內容');
 
-                // Show results after a short delay
-                setTimeout(() => {
-                    showResults(result);
-                }, 500);
+                // Start polling for results
+                await pollForResults(result.batch_id, selectedFiles.length);
 
             } catch (error) {
                 console.error('Error:', error);
@@ -1015,6 +1008,108 @@
                 }
                 resetUI();
             }
+        }
+
+        async function pollForResults(batchId, totalFiles) {
+            const maxAttempts = 120; // 最多等待 6 分鐘 (120 * 3秒)
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                
+                try {
+                    // Query processing_status table
+                    const { data, error } = await supabase
+                        .from('processing_status')
+                        .select('*')
+                        .eq('batch_id', batchId)
+                        .single();
+
+                    if (error) {
+                        console.error('Polling error:', error);
+                        await sleep(3000);
+                        continue;
+                    }
+
+                    if (data) {
+                        const processedFiles = data.processed_files || 0;
+                        const status = data.status;
+                        
+                        // Update progress based on processed files
+                        const progressPercent = Math.min(30 + Math.round((processedFiles / totalFiles) * 60), 90);
+                        updateProgress(progressPercent, '處理中...', `已處理 ${processedFiles}/${totalFiles} 個檔案`);
+
+                        if (status === 'completed') {
+                            updateProgress(100, '處理完成！', '正在準備結果');
+                            
+                            // Get counts from different tables
+                            const counts = await getCounts(batchId);
+                            
+                            setTimeout(() => {
+                                showResults({
+                                    batch_id: batchId,
+                                    bank_count: counts.bank,
+                                    rental_count: counts.rental,
+                                    general_count: counts.general,
+                                    unprocessed_count: counts.unprocessed
+                                });
+                            }, 500);
+                            return;
+                        } else if (status === 'error') {
+                            throw new Error('處理過程中發生錯誤');
+                        }
+                    }
+                } catch (err) {
+                    console.error('Poll error:', err);
+                }
+
+                await sleep(3000); // Wait 3 seconds before next poll
+            }
+
+            throw new Error('處理超時，請稍後重試');
+        }
+
+        async function getCounts(batchId) {
+            const counts = { bank: 0, rental: 0, general: 0, unprocessed: 0 };
+
+            try {
+                // Count bank statements
+                const { count: bankCount } = await supabase
+                    .from('bank_statements')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('batch_id', batchId);
+                counts.bank = bankCount || 0;
+
+                // Count rental leases
+                const { count: rentalCount } = await supabase
+                    .from('rental_leases')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('batch_id', batchId);
+                counts.rental = rentalCount || 0;
+
+                // Count general invoices
+                const { count: generalCount } = await supabase
+                    .from('general_invoices')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('batch_id', batchId);
+                counts.general = generalCount || 0;
+
+                // Count unprocessed files
+                const { count: unprocessedCount } = await supabase
+                    .from('unprocessed_files')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('batch_id', batchId);
+                counts.unprocessed = unprocessedCount || 0;
+
+            } catch (err) {
+                console.error('Error getting counts:', err);
+            }
+
+            return counts;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         function updateProgress(percent, status, detail) {
