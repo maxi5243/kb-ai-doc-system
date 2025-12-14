@@ -559,6 +559,70 @@
             text-decoration: none;
         }
 
+        /* Unprocessed Files Warning */
+        .unprocessed-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #FFF8E6;
+            border: 1px solid #FFE0A3;
+            border-radius: 12px;
+        }
+
+        .unprocessed-section h5 {
+            color: #B8860B;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .unprocessed-section h5 svg {
+            width: 20px;
+            height: 20px;
+            fill: #B8860B;
+        }
+
+        .unprocessed-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .unprocessed-list li {
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .unprocessed-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .unprocessed-list li svg {
+            width: 16px;
+            height: 16px;
+            fill: #B8860B;
+            flex-shrink: 0;
+        }
+
+        .unprocessed-list .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .unprocessed-list .error-reason {
+            color: #999;
+            font-size: 12px;
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -757,7 +821,7 @@
         let selectedFiles = [];
         let processingResults = null;
         let currentBatchId = null;
-        let currentCounts = { bank: 0, rental: 0, general: 0 };
+        let currentCounts = { bank: 0, rental: 0, general: 0, unprocessed: 0 };
 
         // DOM Elements
         const uploadZone = document.getElementById('uploadZone');
@@ -962,7 +1026,8 @@
             currentCounts = {
                 bank: result.bank_count || 0,
                 rental: result.rental_count || 0,
-                general: result.general_count || 0
+                general: result.general_count || 0,
+                unprocessed: result.unprocessed_count || 0
             };
             
             document.getElementById('totalFiles').textContent = selectedFiles.length;
@@ -1052,6 +1117,38 @@
                         `;
                     });
                     buttonsHTML += '</div>';
+                }
+            }
+
+            // Fetch unprocessed files for this batch
+            if (currentCounts.unprocessed > 0) {
+                const { data: unprocessedRecords } = await supabase
+                    .from('unprocessed_files')
+                    .select('id, file_name, error_reason')
+                    .eq('batch_id', currentBatchId);
+
+                if (unprocessedRecords && unprocessedRecords.length > 0) {
+                    buttonsHTML += `
+                        <div class="unprocessed-section">
+                            <h5>
+                                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                                無法識別的文件 (${unprocessedRecords.length} 個) - 請人工處理
+                            </h5>
+                            <ul class="unprocessed-list">
+                    `;
+                    unprocessedRecords.forEach(record => {
+                        const reason = record.error_reason || '無法識別文件類型';
+                        buttonsHTML += `
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                <div>
+                                    <span class="file-name">${record.file_name}</span>
+                                    <br><span class="error-reason">${reason}</span>
+                                </div>
+                            </li>
+                        `;
+                    });
+                    buttonsHTML += '</ul></div>';
                 }
             }
 
