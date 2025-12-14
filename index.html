@@ -1148,52 +1148,128 @@
                         { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
                     ];
                     
-                } else {
-                    // Vertical layout for rental and general invoices
+                } else if (type === 'rental') {
+                    // Enhanced rental lease layout with all new fields
                     
                     // Helper function to split long text into multiple rows
-                    function splitRemarksToRows(remarks) {
-                        if (!remarks || remarks === 'N/A') return [['無']];
+                    function splitTextToRows(text, label) {
+                        if (!text || text === 'N/A') return [[label, 'N/A']];
                         
-                        // Split by semicolon, period followed by space, or common separators
-                        let parts = remarks
-                            .replace(/;\s*/g, ';\n')  // Add newline after semicolon
-                            .replace(/\.\s+(?=[A-Z])/g, '.\n')  // Add newline after period if followed by capital letter
+                        // Split by newlines, semicolons, or common patterns
+                        let parts = text
+                            .replace(/;\s*/g, '\n')
+                            .replace(/第(\d)/g, '\n第$1')
                             .split('\n')
                             .map(s => s.trim())
                             .filter(s => s.length > 0);
                         
-                        // If still one long string, try to split by common patterns
-                        if (parts.length === 1 && parts[0].length > 80) {
-                            parts = parts[0]
-                                .replace(/Years?\s*\d+-\d+:/gi, '\n$&')  // Split by "Year X-X:"
-                                .replace(/第[一二三四五六七八九十]+[、年]/g, '\n$&')  // Split by Chinese year markers
-                                .replace(/Tenant:/gi, '\nTenant:')
-                                .replace(/Deposit:/gi, '\nDeposit:')
-                                .replace(/Contract duration:/gi, '\nContract duration:')
-                                .replace(/Security Deposit:/gi, '\nSecurity Deposit:')
-                                .replace(/租金[:：]/g, '\n租金:')
-                                .replace(/押金[:：]/g, '\n押金:')
-                                .replace(/合同期限[:：]/g, '\n合同期限:')
-                                .replace(/保證金[:：]/g, '\n保證金:')
-                                .split('\n')
-                                .map(s => s.trim())
-                                .filter(s => s.length > 0);
+                        if (parts.length === 1) {
+                            return [[label, parts[0]]];
                         }
                         
-                        return parts.map(part => [part]);
+                        // First row has label, subsequent rows are indented
+                        return parts.map((part, index) => {
+                            if (index === 0) return [label, part];
+                            return ['', part];
+                        });
                     }
                     
-                    // Process remarks into multiple rows
-                    const remarksRows = splitRemarksToRows(record.remarks);
+                    // Build rows with proper structure
+                    let rows = [
+                        ['租務合約資料提取結果'],
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【合約基本資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                        ['檔案名稱', record.source_filename || 'N/A'],
+                        ['合約編號', record.contract_number || 'N/A'],
+                        ['簽約日期', record.signing_date || 'N/A'],
+                        ['合約類型', record.contract_type || 'N/A'],
+                        ['國家/地區', record.country_region || 'N/A'],
+                        ['原文語言', record.original_language || 'N/A'],
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【當事人資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                        ['業主名稱（原文）', record.landlord_name_original || 'N/A'],
+                        ['業主名稱（中文）', record.landlord_name_chinese || 'N/A'],
+                        ['承租人名稱（原文）', record.tenant_name_original || 'N/A'],
+                        ['承租人名稱（中文）', record.tenant_name_chinese || 'N/A'],
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【物業資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                        ['物業地址（原文）', record.property_address_original || 'N/A'],
+                        ['物業地址（中文）', record.property_address_chinese || 'N/A'],
+                        ['物業描述', record.property_description || 'N/A'],
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【租期資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                        ['免租開始日期', record.rent_free_start_date || 'N/A'],
+                        ['免租結束日期', record.rent_free_end_date || 'N/A'],
+                        ['租賃開始日期', record.lease_start_date || 'N/A'],
+                        ['租賃結束日期', record.lease_end_date || 'N/A'],
+                        ['總租期', record.total_lease_term || 'N/A'],
+                    ];
                     
+                    // Add lease term clause (may be multi-line)
+                    const leaseTermRows = splitTextToRows(record.lease_term_clause, '租期條款');
+                    rows = rows.concat(leaseTermRows);
+                    
+                    rows = rows.concat([
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【租金資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                        ['貨幣代碼', record.currency_code || 'N/A'],
+                        ['貨幣名稱', record.currency_name || 'N/A'],
+                        ['租金結構類型', record.rent_structure_type || 'N/A'],
+                    ]);
+                    
+                    // Add rent schedule (may be multi-line for tiered rent)
+                    const rentScheduleRows = splitTextToRows(record.rent_schedule, '租金明細');
+                    rows = rows.concat(rentScheduleRows);
+                    
+                    rows = rows.concat([
+                        ['管理費', record.management_fee || 'N/A'],
+                        ['押金金額', record.deposit_amount || 'N/A'],
+                        [''],
+                        ['═══════════════════════════════════════', ''],
+                        ['【其他資料】', ''],
+                        ['═══════════════════════════════════════', ''],
+                    ]);
+                    
+                    // Add utilities clause (may be multi-line)
+                    const utilitiesRows = splitTextToRows(record.utilities_clause, '水電費條款');
+                    rows = rows.concat(utilitiesRows);
+                    
+                    // Add remarks (may be multi-line)
+                    const remarksRows = splitTextToRows(record.remarks, '備註');
+                    rows = rows.concat(remarksRows);
+                    
+                    ws = XLSX.utils.aoa_to_sheet(rows);
+                    
+                    // Set column widths
+                    ws['!cols'] = [
+                        { wch: 20 },  // Label column
+                        { wch: 80 }   // Value column
+                    ];
+                    
+                    // Merge title cell
+                    ws['!merges'] = [
+                        { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+                    ];
+                    
+                } else {
+                    // General invoices layout (keep simple)
                     const rows = [
-                        [type === 'rental' ? '租務單據' : '常規單據'],
+                        ['常規單據'],
                         [''],
                         ['基本資料', ''],
                         ['檔案名稱', record.source_filename || ''],
                         ['發票日期', record.invoice_date || ''],
-                        [type === 'rental' ? '合約編號' : '發票編號', record.invoice_contract_number || ''],
+                        ['發票編號', record.invoice_contract_number || ''],
                         ['供應商/客戶', record.vendor_or_customer || ''],
                         [''],
                         ['金額資料', ''],
@@ -1203,7 +1279,7 @@
                         ['澳門幣金額', record.amount_mop || ''],
                         [''],
                         ['備註', ''],
-                        ...remarksRows  // Spread remarks into multiple rows
+                        [record.remarks || '無']
                     ];
                     
                     ws = XLSX.utils.aoa_to_sheet(rows);
@@ -1211,7 +1287,7 @@
                     // Set column widths
                     ws['!cols'] = [
                         { wch: 15 },
-                        { wch: 80 }  // Wider column for better readability
+                        { wch: 60 }
                     ];
                     
                     // Merge title cell
