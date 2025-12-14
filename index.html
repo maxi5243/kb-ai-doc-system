@@ -970,6 +970,10 @@
 
                 updateProgress(40, '正在上傳...', '傳送檔案至伺服器');
 
+                // 設定超時時間為5分鐘（300秒）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000);
+
                 // Send to webhook
                 const response = await fetch(CONFIG.WEBHOOK_URL, {
                     method: 'POST',
@@ -980,8 +984,11 @@
                     body: JSON.stringify({
                         totalFiles: selectedFiles.length,
                         files: filesData
-                    })
+                    }),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 updateProgress(70, '正在處理...', 'AI 正在分析文件內容');
 
@@ -1001,7 +1008,11 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                showError('處理過程中發生錯誤：' + error.message);
+                if (error.name === 'AbortError') {
+                    showError('處理超時，請減少檔案數量或稍後再試');
+                } else {
+                    showError('處理過程中發生錯誤：' + error.message);
+                }
                 resetUI();
             }
         }
