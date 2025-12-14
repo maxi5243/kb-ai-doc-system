@@ -1014,6 +1014,8 @@
             const maxAttempts = 120; // 最多等待 6 分鐘 (120 * 3秒)
             let attempts = 0;
 
+            console.log('開始輪詢，batch_id:', batchId, '總文件數:', totalFiles);
+
             while (attempts < maxAttempts) {
                 attempts++;
                 
@@ -1025,6 +1027,8 @@
                         .eq('batch_id', batchId)
                         .single();
 
+                    console.log('輪詢第', attempts, '次，結果:', data, '錯誤:', error);
+
                     if (error) {
                         console.error('Polling error:', error);
                         await sleep(3000);
@@ -1035,15 +1039,19 @@
                         const processedFiles = data.processed_files || 0;
                         const status = data.status;
                         
+                        console.log('狀態:', status, '已處理:', processedFiles, '/', totalFiles);
+                        
                         // Update progress based on processed files
                         const progressPercent = Math.min(30 + Math.round((processedFiles / totalFiles) * 60), 90);
                         updateProgress(progressPercent, '處理中...', `已處理 ${processedFiles}/${totalFiles} 個檔案`);
 
                         if (status === 'completed') {
+                            console.log('處理完成！開始獲取結果...');
                             updateProgress(100, '處理完成！', '正在準備結果');
                             
                             // Get counts from different tables
                             const counts = await getCounts(batchId);
+                            console.log('獲取到的數量:', counts);
                             
                             setTimeout(() => {
                                 showResults({
