@@ -1262,38 +1262,63 @@
                     ];
                     
                 } else {
-                    // General invoices layout (keep simple)
+                    // General invoices layout - matching client expected format
                     const rows = [
-                        ['常規單據'],
+                        ['單據數據提取結果', ''],
                         [''],
-                        ['基本資料', ''],
-                        ['檔案名稱', record.source_filename || ''],
-                        ['發票日期', record.invoice_date || ''],
-                        ['發票編號', record.invoice_contract_number || ''],
-                        ['供應商/客戶', record.vendor_or_customer || ''],
-                        [''],
-                        ['金額資料', ''],
-                        ['描述', record.description || ''],
-                        ['貨幣', record.currency || ''],
-                        ['金額', record.amount || ''],
-                        ['澳門幣金額', record.amount_mop || ''],
-                        [''],
-                        ['備註', ''],
-                        [record.remarks || '無']
+                        ['項目名稱', '提取數據'],
+                        ['日期', record.invoice_date || 'N/A'],
+                        ['發票編號/收據編號/合同編號', record.invoice_contract_number || 'N/A'],
+                        ['供應商/客戶', record.vendor_or_customer || 'N/A'],
+                        ['描述', record.description || 'N/A'],
+                        ['單據貨幣', record.currency || 'N/A'],
+                        ['單據金額', record.amount || 'N/A'],
+                        ['澳門幣金額', record.amount_mop || 'N/A'],
+                        ['備註', record.remarks || 'N/A']
                     ];
                     
                     ws = XLSX.utils.aoa_to_sheet(rows);
                     
-                    // Set column widths
+                    // Set column widths to match client format
                     ws['!cols'] = [
-                        { wch: 15 },
-                        { wch: 60 }
+                        { wch: 28 },  // 項目名稱 column
+                        { wch: 80 }   // 提取數據 column (wider for long content)
                     ];
                     
                     // Merge title cell
                     ws['!merges'] = [
                         { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
                     ];
+                    
+                    // Apply styling - header row with border
+                    // Note: Basic styling with borders
+                    const headerStyle = {
+                        font: { bold: true },
+                        fill: { fgColor: { rgb: "F0F0F0" } },
+                        border: {
+                            top: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            left: { style: 'thin' },
+                            right: { style: 'thin' }
+                        }
+                    };
+                    
+                    // Apply borders to all data cells
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    for (let R = 2; R <= range.e.r; R++) {
+                        for (let C = 0; C <= 1; C++) {
+                            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                            if (!ws[cellRef]) ws[cellRef] = { v: '' };
+                            ws[cellRef].s = {
+                                border: {
+                                    top: { style: 'thin', color: { rgb: "000000" } },
+                                    bottom: { style: 'thin', color: { rgb: "000000" } },
+                                    left: { style: 'thin', color: { rgb: "000000" } },
+                                    right: { style: 'thin', color: { rgb: "000000" } }
+                                }
+                            };
+                        }
+                    }
                 }
                 
                 XLSX.utils.book_append_sheet(wb, ws, '單據資料');
