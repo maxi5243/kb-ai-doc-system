@@ -1150,6 +1150,43 @@
                     
                 } else {
                     // Vertical layout for rental and general invoices
+                    
+                    // Helper function to split long text into multiple rows
+                    function splitRemarksToRows(remarks) {
+                        if (!remarks || remarks === 'N/A') return [['無']];
+                        
+                        // Split by semicolon, period followed by space, or common separators
+                        let parts = remarks
+                            .replace(/;\s*/g, ';\n')  // Add newline after semicolon
+                            .replace(/\.\s+(?=[A-Z])/g, '.\n')  // Add newline after period if followed by capital letter
+                            .split('\n')
+                            .map(s => s.trim())
+                            .filter(s => s.length > 0);
+                        
+                        // If still one long string, try to split by common patterns
+                        if (parts.length === 1 && parts[0].length > 80) {
+                            parts = parts[0]
+                                .replace(/Years?\s*\d+-\d+:/gi, '\n$&')  // Split by "Year X-X:"
+                                .replace(/第[一二三四五六七八九十]+[、年]/g, '\n$&')  // Split by Chinese year markers
+                                .replace(/Tenant:/gi, '\nTenant:')
+                                .replace(/Deposit:/gi, '\nDeposit:')
+                                .replace(/Contract duration:/gi, '\nContract duration:')
+                                .replace(/Security Deposit:/gi, '\nSecurity Deposit:')
+                                .replace(/租金[:：]/g, '\n租金:')
+                                .replace(/押金[:：]/g, '\n押金:')
+                                .replace(/合同期限[:：]/g, '\n合同期限:')
+                                .replace(/保證金[:：]/g, '\n保證金:')
+                                .split('\n')
+                                .map(s => s.trim())
+                                .filter(s => s.length > 0);
+                        }
+                        
+                        return parts.map(part => [part]);
+                    }
+                    
+                    // Process remarks into multiple rows
+                    const remarksRows = splitRemarksToRows(record.remarks);
+                    
                     const rows = [
                         [type === 'rental' ? '租務單據' : '常規單據'],
                         [''],
@@ -1166,7 +1203,7 @@
                         ['澳門幣金額', record.amount_mop || ''],
                         [''],
                         ['備註', ''],
-                        [record.remarks || '無']
+                        ...remarksRows  // Spread remarks into multiple rows
                     ];
                     
                     ws = XLSX.utils.aoa_to_sheet(rows);
@@ -1174,7 +1211,7 @@
                     // Set column widths
                     ws['!cols'] = [
                         { wch: 15 },
-                        { wch: 60 }
+                        { wch: 80 }  // Wider column for better readability
                     ];
                     
                     // Merge title cell
