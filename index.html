@@ -623,6 +623,116 @@
             font-size: 12px;
         }
 
+        /* Debug Panel */
+        .debug-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 300px;
+            background: #1a1a2e;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            z-index: 9999;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+        }
+
+        .debug-header {
+            background: #16213e;
+            color: #4ecca3;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .debug-header h4 {
+            margin: 0;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .debug-toggle {
+            background: none;
+            border: none;
+            color: #4ecca3;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .debug-content {
+            padding: 10px;
+            max-height: 240px;
+            overflow-y: auto;
+            color: #e8e8e8;
+        }
+
+        .debug-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .debug-content::-webkit-scrollbar-thumb {
+            background: #4ecca3;
+            border-radius: 3px;
+        }
+
+        .debug-log {
+            margin-bottom: 6px;
+            padding: 6px 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            border-left: 3px solid #4ecca3;
+        }
+
+        .debug-log.error {
+            border-left-color: #ff6b6b;
+            background: rgba(255,107,107,0.1);
+        }
+
+        .debug-log.success {
+            border-left-color: #4ecca3;
+            background: rgba(78,204,163,0.1);
+        }
+
+        .debug-log.warning {
+            border-left-color: #ffd93d;
+            background: rgba(255,217,61,0.1);
+        }
+
+        .debug-log .time {
+            color: #888;
+            font-size: 10px;
+        }
+
+        .debug-log .message {
+            color: #fff;
+            word-break: break-all;
+        }
+
+        .debug-log .data {
+            color: #4ecca3;
+            font-size: 10px;
+            margin-top: 3px;
+        }
+
+        .debug-panel.collapsed .debug-content {
+            display: none;
+        }
+
+        .debug-clear {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -799,23 +909,100 @@
         <p>Powered by 極致AI 人工智能科技有限公司 MAX AI</p>
     </footer>
 
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debugPanel">
+        <div class="debug-header" onclick="toggleDebugPanel()">
+            <h4>🔧 Debug Console v9</h4>
+            <div>
+                <button class="debug-clear" onclick="event.stopPropagation(); clearDebugLogs()">清除</button>
+                <span class="debug-toggle" id="debugToggle">▼</span>
+            </div>
+        </div>
+        <div class="debug-content" id="debugContent"></div>
+    </div>
+
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // Configuration - Hidden from users
+        // =====================================================
+        // DEBUG UTILITIES - v9 Enhanced
+        // =====================================================
+        function debugLog(message, data = null, type = 'info') {
+            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            const container = document.getElementById('debugContent');
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `debug-log ${type}`;
+            logEntry.innerHTML = `
+                <div class="time">${time}</div>
+                <div class="message">${message}</div>
+                ${data ? `<div class="data">${typeof data === 'object' ? JSON.stringify(data, null, 2) : data}</div>` : ''}
+            `;
+            container.appendChild(logEntry);
+            container.scrollTop = container.scrollHeight;
+            
+            // Also log to browser console
+            console.log(`[${type.toUpperCase()}] ${message}`, data || '');
+        }
+
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debugPanel');
+            const toggle = document.getElementById('debugToggle');
+            panel.classList.toggle('collapsed');
+            toggle.textContent = panel.classList.contains('collapsed') ? '▲' : '▼';
+        }
+
+        function clearDebugLogs() {
+            document.getElementById('debugContent').innerHTML = '';
+            debugLog('Debug logs cleared', null, 'info');
+        }
+
+        // =====================================================
+        // CONFIGURATION
+        // =====================================================
         const CONFIG = {
             WEBHOOK_URL: 'https://maxai-tech.app.n8n.cloud/webhook/kb-ai-upload',
             SUPABASE_URL: 'https://drrdcsbwfbtgxntyfjjb.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycmRjc2J3ZmJ0Z3hudHlmampiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNjkxOTgsImV4cCI6MjA4MDk0NTE5OH0.Up0n7ZUmsZ5OwJjFHl7zimxFA7DYSm-EMdCmm26843s',
             MAX_FILES: 20,
-            MAX_FILE_SIZE: 10 * 1024 * 1024 // 10MB
+            MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+            POLL_INTERVAL: 3000, // 3 seconds
+            INITIAL_DELAY: 2000, // 2 seconds delay before first poll
+            MAX_POLL_ATTEMPTS: 120 // 6 minutes max
         };
 
         // Initialize Supabase client
         const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+        // Log initialization
+        debugLog('系統初始化完成', {
+            supabaseUrl: CONFIG.SUPABASE_URL,
+            webhookUrl: CONFIG.WEBHOOK_URL,
+            pollInterval: CONFIG.POLL_INTERVAL + 'ms',
+            initialDelay: CONFIG.INITIAL_DELAY + 'ms'
+        }, 'success');
+
+        // Test Supabase connection on load
+        (async function testConnection() {
+            try {
+                debugLog('測試 Supabase 連接...', null, 'info');
+                const { data, error } = await supabase
+                    .from('processing_status')
+                    .select('batch_id')
+                    .limit(1);
+                
+                if (error) {
+                    debugLog('Supabase 連接錯誤', error, 'error');
+                } else {
+                    debugLog('Supabase 連接成功', { recordFound: data.length > 0 }, 'success');
+                }
+            } catch (err) {
+                debugLog('Supabase 連接異常', err.message, 'error');
+            }
+        })();
 
         // State
         let selectedFiles = [];
@@ -949,6 +1136,8 @@
         async function startProcessing() {
             if (selectedFiles.length === 0) return;
 
+            debugLog('開始處理流程', { fileCount: selectedFiles.length }, 'info');
+
             // Hide action section, show progress
             actionSection.style.display = 'none';
             progressSection.classList.add('active');
@@ -958,6 +1147,7 @@
             try {
                 // Update progress
                 updateProgress(10, '正在準備檔案...', '轉換檔案格式中');
+                debugLog('步驟 1: 準備檔案', null, 'info');
 
                 // Convert files to base64
                 const filesData = await Promise.all(
@@ -968,7 +1158,13 @@
                     }))
                 );
 
+                debugLog('步驟 2: 檔案轉換完成', { 
+                    filesConverted: filesData.length,
+                    fileNames: filesData.map(f => f.name)
+                }, 'success');
+
                 updateProgress(20, '正在上傳...', '傳送檔案至伺服器');
+                debugLog('步驟 3: 發送請求到 Webhook', { url: CONFIG.WEBHOOK_URL }, 'info');
 
                 // Send to webhook (now returns immediately with batch_id)
                 const response = await fetch(CONFIG.WEBHOOK_URL, {
@@ -983,26 +1179,54 @@
                     })
                 });
 
+                debugLog('Webhook 響應狀態', { 
+                    status: response.status, 
+                    ok: response.ok 
+                }, response.ok ? 'success' : 'error');
+
                 if (!response.ok) {
                     throw new Error('伺服器處理失敗');
                 }
 
                 const result = await response.json();
-                console.log('收到的響應:', result);
-                console.log('batch_id:', result.batch_id);
+                debugLog('步驟 4: 收到 Webhook 響應', result, 'success');
                 
                 if (!result.batch_id) {
+                    debugLog('錯誤：未收到 batch_id', result, 'error');
                     throw new Error('未收到處理批次ID');
                 }
 
                 currentBatchId = result.batch_id;
-                console.log('設定 currentBatchId:', currentBatchId);
+                debugLog('步驟 5: 設定 currentBatchId', { batch_id: currentBatchId }, 'success');
+                
                 updateProgress(30, '處理中...', 'AI 正在分析文件內容');
 
+                // CRITICAL: Wait before polling to ensure DB record is created
+                debugLog(`步驟 6: 等待 ${CONFIG.INITIAL_DELAY}ms 確保記錄已創建...`, null, 'warning');
+                await sleep(CONFIG.INITIAL_DELAY);
+
+                // Verify record exists before starting poll loop
+                debugLog('步驟 7: 驗證記錄是否存在...', null, 'info');
+                const { data: checkData, error: checkError } = await supabase
+                    .from('processing_status')
+                    .select('*')
+                    .eq('batch_id', result.batch_id)
+                    .maybeSingle();
+
+                if (checkError) {
+                    debugLog('驗證查詢錯誤', checkError, 'error');
+                } else if (!checkData) {
+                    debugLog('⚠️ 記錄尚未創建，將在輪詢中等待', { batch_id: result.batch_id }, 'warning');
+                } else {
+                    debugLog('✅ 記錄已存在', checkData, 'success');
+                }
+
                 // Start polling for results
+                debugLog('步驟 8: 開始輪詢', { batch_id: result.batch_id, totalFiles: selectedFiles.length }, 'info');
                 await pollForResults(result.batch_id, selectedFiles.length);
 
             } catch (error) {
+                debugLog('處理錯誤', { name: error.name, message: error.message }, 'error');
                 console.error('Error:', error);
                 if (error.name === 'AbortError') {
                     showError('處理超時，請減少檔案數量或稍後再試');
@@ -1014,53 +1238,89 @@
         }
 
         async function pollForResults(batchId, totalFiles) {
-            const maxAttempts = 120; // 最多等待 6 分鐘 (120 * 3秒)
+            const maxAttempts = CONFIG.MAX_POLL_ATTEMPTS;
             let attempts = 0;
+            let recordFoundOnce = false;
 
-            console.log('開始輪詢，batch_id:', batchId, '總文件數:', totalFiles);
+            debugLog('輪詢開始', { 
+                batch_id: batchId, 
+                totalFiles: totalFiles,
+                maxAttempts: maxAttempts,
+                pollInterval: CONFIG.POLL_INTERVAL + 'ms'
+            }, 'info');
 
             while (attempts < maxAttempts) {
                 attempts++;
                 
                 try {
-                    // Query processing_status table - 使用 maybeSingle 而不是 single
+                    // Query processing_status table
+                    const queryStart = Date.now();
                     const { data, error } = await supabase
                         .from('processing_status')
                         .select('*')
                         .eq('batch_id', batchId)
                         .maybeSingle();
+                    const queryTime = Date.now() - queryStart;
 
-                    console.log('輪詢第', attempts, '次，結果:', data, '錯誤:', error);
+                    // Only log every 5th attempt or on status change to reduce noise
+                    const shouldLog = attempts === 1 || attempts % 5 === 0 || data?.status === 'completed' || error;
 
                     if (error) {
-                        console.error('Polling error:', error);
-                        await sleep(3000);
+                        debugLog(`輪詢 #${attempts} 錯誤`, { 
+                            error: error.message,
+                            code: error.code,
+                            queryTime: queryTime + 'ms'
+                        }, 'error');
+                        await sleep(CONFIG.POLL_INTERVAL);
                         continue;
                     }
 
-                    // 如果記錄不存在，繼續等待
+                    // 如果記錄不存在
                     if (!data) {
-                        console.log('記錄尚未創建，繼續等待...');
-                        await sleep(3000);
+                        if (shouldLog) {
+                            debugLog(`輪詢 #${attempts}: 記錄不存在`, { 
+                                batch_id: batchId,
+                                queryTime: queryTime + 'ms',
+                                hint: '可能 Create a row 還在執行中'
+                            }, 'warning');
+                        }
+                        await sleep(CONFIG.POLL_INTERVAL);
                         continue;
+                    }
+
+                    // 記錄第一次找到
+                    if (!recordFoundOnce) {
+                        recordFoundOnce = true;
+                        debugLog('✅ 首次找到記錄！', data, 'success');
                     }
 
                     const processedFiles = data.processed_files || 0;
                     const status = data.status;
                     
-                    console.log('狀態:', status, '已處理:', processedFiles, '/', totalFiles);
+                    if (shouldLog) {
+                        debugLog(`輪詢 #${attempts}`, { 
+                            status: status, 
+                            processed: `${processedFiles}/${totalFiles}`,
+                            queryTime: queryTime + 'ms'
+                        }, status === 'completed' ? 'success' : 'info');
+                    }
                     
                     // Update progress based on processed files
                     const progressPercent = Math.min(30 + Math.round((processedFiles / totalFiles) * 60), 90);
                     updateProgress(progressPercent, '處理中...', `已處理 ${processedFiles}/${totalFiles} 個檔案`);
 
                     if (status === 'completed') {
-                        console.log('處理完成！開始獲取結果...');
+                        debugLog('🎉 處理完成！', { 
+                            batch_id: batchId,
+                            totalAttempts: attempts,
+                            totalTime: (attempts * CONFIG.POLL_INTERVAL / 1000).toFixed(1) + 's'
+                        }, 'success');
+                        
                         updateProgress(100, '處理完成！', '正在準備結果');
                         
                         // Get counts from different tables
                         const counts = await getCounts(batchId);
-                        console.log('獲取到的數量:', counts);
+                        debugLog('獲取結果數量', counts, 'success');
                         
                         setTimeout(() => {
                             showResults({
@@ -1073,51 +1333,65 @@
                         }, 500);
                         return;
                     } else if (status === 'error') {
+                        debugLog('處理狀態為 error', data, 'error');
                         throw new Error('處理過程中發生錯誤');
                     }
                 } catch (err) {
+                    debugLog('輪詢異常', { message: err.message }, 'error');
                     console.error('Poll error:', err);
                 }
 
-                await sleep(3000); // Wait 3 seconds before next poll
+                await sleep(CONFIG.POLL_INTERVAL);
             }
 
+            debugLog('輪詢超時', { 
+                totalAttempts: attempts,
+                batch_id: batchId 
+            }, 'error');
             throw new Error('處理超時，請稍後重試');
         }
 
         async function getCounts(batchId) {
             const counts = { bank: 0, rental: 0, general: 0, unprocessed: 0 };
+            debugLog('開始獲取各表數量', { batch_id: batchId }, 'info');
 
             try {
                 // Count bank statements
-                const { count: bankCount } = await supabase
+                const { count: bankCount, error: bankError } = await supabase
                     .from('bank_statements')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.bank = bankCount || 0;
+                if (bankError) debugLog('bank_statements 查詢錯誤', bankError, 'error');
 
                 // Count rental leases
-                const { count: rentalCount } = await supabase
+                const { count: rentalCount, error: rentalError } = await supabase
                     .from('rental_leases')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.rental = rentalCount || 0;
+                if (rentalError) debugLog('rental_leases 查詢錯誤', rentalError, 'error');
 
                 // Count general invoices
-                const { count: generalCount } = await supabase
+                const { count: generalCount, error: generalError } = await supabase
                     .from('general_invoices')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.general = generalCount || 0;
+                if (generalError) debugLog('general_invoices 查詢錯誤', generalError, 'error');
 
                 // Count unprocessed files
-                const { count: unprocessedCount } = await supabase
+                const { count: unprocessedCount, error: unprocessedError } = await supabase
                     .from('unprocessed_files')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.unprocessed = unprocessedCount || 0;
+                if (unprocessedError) debugLog('unprocessed_files 查詢錯誤', unprocessedError, 'error');
+
+                debugLog('數量統計完成', counts, 'success');
 
             } catch (err) {
+                debugLog('獲取數量時發生異常', err.message, 'error');
                 console.error('Error getting counts:', err);
             }
 
