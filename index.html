@@ -795,8 +795,8 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>© 2024 京澳會計師事務所 Keng Ou CPAs. All rights reserved.</p>
-        <p>Powered by AI Document Processing Technology</p>
+        <p>© 2025 京澳會計師事務所 Keng Ou CPAs. All rights reserved.</p>
+        <p>Powered by 極致AI 人工智能科技有限公司 MAX AI</p>
     </footer>
 
     <!-- SheetJS for Excel Export -->
@@ -988,12 +988,15 @@
                 }
 
                 const result = await response.json();
+                console.log('收到的響應:', result);
+                console.log('batch_id:', result.batch_id);
                 
                 if (!result.batch_id) {
                     throw new Error('未收到處理批次ID');
                 }
 
                 currentBatchId = result.batch_id;
+                console.log('設定 currentBatchId:', currentBatchId);
                 updateProgress(30, '處理中...', 'AI 正在分析文件內容');
 
                 // Start polling for results
