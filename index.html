@@ -1094,53 +1094,133 @@
                 let ws;
                 
                 if (type === 'bank') {
-                    // Vertical layout for bank statements
-                    const rows = [
-                        ['銀行單據確認書'],
+                    // Bank Confirmation Letter - 21 Item Standard Format
+                    
+                    // Helper function to split multi-line text into rows
+                    function splitToRows(text, label) {
+                        if (!text || text === 'NIL' || text === 'N/A') {
+                            return [[label, 'NIL']];
+                        }
+                        const lines = text.split('\n').filter(line => line.trim());
+                        if (lines.length === 0) return [[label, 'NIL']];
+                        if (lines.length === 1) return [[label, lines[0]]];
+                        return lines.map((line, idx) => [idx === 0 ? label : '', line]);
+                    }
+                    
+                    // Build rows with 21-item format
+                    let rows = [
+                        ['銀行確認書數據提取', ''],
                         [''],
-                        ['基本資料', ''],
-                        ['檔案名稱', record.source_filename || ''],
-                        ['銀行名稱', record.bank_name || ''],
-                        ['帳戶持有人', record.account_holder || ''],
-                        ['帳戶號碼', record.account_number || ''],
-                        ['結單日期', record.statement_date || ''],
-                        ['貨幣', record.currency || ''],
-                        ['分行', record.branch || ''],
-                        ['客戶經理', record.relationship_manager || ''],
+                        ['項目名稱', '提取數據'],
+                        ['Bank:', record.bank_name || 'N/A'],
+                        ['Client:', record.client_name || 'N/A'],
+                        ['Reference:', record.reference_number || 'N/A'],
+                        ['Confirmation Date:', record.confirmation_date || 'N/A'],
                         [''],
-                        ['存款帳戶', ''],
-                        ['定期存款', record.deposits_fixed_or_at_call || 'N/A'],
-                        ['儲蓄帳戶', record.savings_accounts || 'N/A'],
-                        ['往來帳戶', record.current_account_balance || 'N/A'],
-                        [''],
-                        ['貸款帳戶', ''],
-                        ['貸款帳戶餘額', record.loan_account_debit_balance || 'N/A'],
-                        ['按揭', record.mortgages || 'N/A'],
-                        ['其他貸款', record.other_loans || 'N/A'],
-                        ['信用卡', record.credit_cards || 'N/A'],
-                        [''],
-                        ['其他資產', ''],
-                        ['保險', record.insurance_policies || 'N/A'],
-                        ['投資帳戶', record.investment_accounts || 'N/A'],
-                        ['退休帳戶', record.retirement_accounts || 'N/A'],
-                        ['保險箱', record.safe_deposit_boxes || 'N/A'],
-                        ['信託', record.trusts_managed || 'N/A'],
-                        [''],
-                        ['總結', ''],
-                        ['總存款', record.total_deposits || ''],
-                        ['總貸款', record.total_loans || ''],
-                        ['淨額', record.net_position || ''],
-                        [''],
-                        ['備註', ''],
-                        [record.remarks || '無']
                     ];
+                    
+                    // Item 1: Deposits Fixed or at Call
+                    rows.push(['【Item 1】Deposits Fixed or at Call', '']);
+                    rows = rows.concat(splitToRows(record.item1_deposits_fixed_or_call, ''));
+                    rows.push(['']);
+                    
+                    // Item 2: Savings Accounts
+                    rows.push(['【Item 2】Savings Accounts', '']);
+                    rows = rows.concat(splitToRows(record.item2_savings_accounts, ''));
+                    rows.push(['']);
+                    
+                    // Item 3: Current Account Balance
+                    rows.push(['【Item 3】Current Account Balance', '']);
+                    rows = rows.concat(splitToRows(record.item3_current_account_balance, ''));
+                    rows.push(['']);
+                    
+                    // Item 4: Loan Account Debit Balance
+                    rows.push(['【Item 4】Loan Account Debit Balance', '']);
+                    rows = rows.concat(splitToRows(record.item4_loan_account_debit_balance, ''));
+                    rows.push(['']);
+                    
+                    // Item 5: Accounts closed
+                    rows.push(['【Item 5】Accounts Closed', '']);
+                    rows = rows.concat(splitToRows(record.item5_accounts_closed, ''));
+                    rows.push(['']);
+                    
+                    // Item 6: Advances to Manufacturers
+                    rows.push(['【Item 6】Advances to Manufacturers', '']);
+                    rows = rows.concat(splitToRows(record.item6_advances_to_manufacturers, ''));
+                    rows.push(['']);
+                    
+                    // Item 7: Acceptances Outstanding
+                    rows.push(['【Item 7】Acceptances Outstanding', '']);
+                    rows = rows.concat(splitToRows(record.item7_acceptances_outstanding, ''));
+                    rows.push(['']);
+                    
+                    // Item 8: Partial payments
+                    rows.push(['【Item 8】Partial Payments', '']);
+                    rows = rows.concat(splitToRows(record.item8_partial_payments, ''));
+                    rows.push(['']);
+                    
+                    // Item 9: Irrevocable Letters of Credit
+                    rows.push(['【Item 9】Irrevocable Letters of Credit', '']);
+                    rows = rows.concat(splitToRows(record.item9_irrevocable_lc, ''));
+                    rows.push(['']);
+                    
+                    // Item 10: Bills receivable by us
+                    rows.push(['【Item 10】Bills Receivable by Us', '']);
+                    rows = rows.concat(splitToRows(record.item10_bills_receivable, ''));
+                    rows.push(['']);
+                    
+                    // Item 11: Marginal deposit
+                    rows.push(['【Item 11】Marginal Deposit', '']);
+                    rows = rows.concat(splitToRows(record.item11_marginal_deposit, ''));
+                    rows.push(['']);
+                    
+                    // Item 12: Loans with Inward Charges
+                    rows.push(['【Item 12】Loans with Inward Charges', '']);
+                    rows = rows.concat(splitToRows(record.item12_loans_inward_charges, ''));
+                    rows.push(['']);
+                    
+                    // Item 13: Guarantees
+                    rows.push(['【Item 13】Guarantees', '']);
+                    rows = rows.concat(splitToRows(record.item13_guarantees, ''));
+                    rows.push(['']);
+                    
+                    // Item 14: Foreign Exchange Contract
+                    rows.push(['【Item 14】Foreign Exchange Contract', '']);
+                    rows = rows.concat(splitToRows(record.item14_forex_contracts, ''));
+                    rows.push(['']);
+                    
+                    // Item 15: Other contingent liabilities
+                    rows.push(['【Item 15】Other Contingent Liabilities', '']);
+                    rows = rows.concat(splitToRows(record.item15_other_liabilities, ''));
+                    rows.push(['']);
+                    
+                    // Item 16: Securities and documents
+                    rows.push(['【Item 16】Securities and Documents', '']);
+                    rows = rows.concat(splitToRows(record.item16_securities_documents, ''));
+                    rows.push(['']);
+                    
+                    // Item 17-21: Other 1-5
+                    rows.push(['【Item 17】Other 1', '']);
+                    rows = rows.concat(splitToRows(record.item17_other1, ''));
+                    rows.push(['']);
+                    
+                    rows.push(['【Item 18】Other 2', '']);
+                    rows = rows.concat(splitToRows(record.item18_other2, ''));
+                    rows.push(['']);
+                    
+                    rows.push(['【Item 19】Other 3', '']);
+                    rows = rows.concat(splitToRows(record.item19_other3, ''));
+                    rows.push(['']);
+                    
+                    rows.push(['【Item 20】Other 4', '']);
+                    rows = rows.concat(splitToRows(record.item20_other4, ''));
                     
                     ws = XLSX.utils.aoa_to_sheet(rows);
                     
                     // Set column widths
                     ws['!cols'] = [
-                        { wch: 15 },  // Label column
-                        { wch: 80 }   // Value column (wider for long content)
+                        { wch: 38 },  // Item name column
+                        { wch: 100 }  // Data column (wider for long content)
                     ];
                     
                     // Merge title cell
@@ -1282,43 +1362,13 @@
                     // Set column widths to match client format
                     ws['!cols'] = [
                         { wch: 28 },  // 項目名稱 column
-                        { wch: 80 }   // 提取數據 column (wider for long content)
+                        { wch: 80 }   // 提取數據 column
                     ];
                     
                     // Merge title cell
                     ws['!merges'] = [
                         { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
                     ];
-                    
-                    // Apply styling - header row with border
-                    // Note: Basic styling with borders
-                    const headerStyle = {
-                        font: { bold: true },
-                        fill: { fgColor: { rgb: "F0F0F0" } },
-                        border: {
-                            top: { style: 'thin' },
-                            bottom: { style: 'thin' },
-                            left: { style: 'thin' },
-                            right: { style: 'thin' }
-                        }
-                    };
-                    
-                    // Apply borders to all data cells
-                    const range = XLSX.utils.decode_range(ws['!ref']);
-                    for (let R = 2; R <= range.e.r; R++) {
-                        for (let C = 0; C <= 1; C++) {
-                            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-                            if (!ws[cellRef]) ws[cellRef] = { v: '' };
-                            ws[cellRef].s = {
-                                border: {
-                                    top: { style: 'thin', color: { rgb: "000000" } },
-                                    bottom: { style: 'thin', color: { rgb: "000000" } },
-                                    left: { style: 'thin', color: { rgb: "000000" } },
-                                    right: { style: 'thin', color: { rgb: "000000" } }
-                                }
-                            };
-                        }
-                    }
                 }
                 
                 XLSX.utils.book_append_sheet(wb, ws, '單據資料');
