@@ -188,16 +188,28 @@
             margin-bottom: 20px;
         }
 
+        .upload-hints {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
         .upload-hint {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             background: white;
-            padding: 10px 20px;
-            border-radius: 30px;
+            padding: 8px 16px;
+            border-radius: 20px;
             font-size: 13px;
             color: var(--primary-gold-dark);
             border: 1px solid var(--border-light);
+        }
+
+        .upload-hint strong {
+            color: var(--primary-gold);
+            font-weight: 600;
         }
 
         .file-input {
@@ -210,12 +222,16 @@
         }
 
         .file-list-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             padding: 15px 0;
             border-bottom: 1px solid var(--border-light);
             margin-bottom: 15px;
+        }
+
+        .file-list-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
 
         .file-list-header h4 {
@@ -227,6 +243,79 @@
         .file-count {
             font-size: 13px;
             color: var(--text-muted);
+        }
+
+        /* Size Progress Bar */
+        .size-progress-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .size-progress-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .size-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-gold-light), var(--primary-gold));
+            border-radius: 4px;
+            transition: width 0.3s ease, background 0.3s ease;
+            width: 0%;
+        }
+
+        .size-progress-fill.warning {
+            background: linear-gradient(90deg, #f39c12, #e74c3c);
+        }
+
+        .size-progress-fill.danger {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .size-progress-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 90px;
+            text-align: right;
+        }
+
+        .size-progress-text.warning {
+            color: #f39c12;
+            font-weight: 500;
+        }
+
+        .size-progress-text.danger {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        /* Size Warning */
+        .size-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #856404;
+            font-size: 13px;
+        }
+
+        .size-warning.danger {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .size-warning svg {
+            flex-shrink: 0;
         }
 
         .file-list {
@@ -721,7 +810,7 @@
                 <p>支援 PDF、JPG、PNG 格式</p>
                 <div class="upload-hint">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                    單次最多上傳 20 個檔案
+                    單次最多 <strong>10 個檔案</strong>，總大小不超過 <strong>10 MB</strong>
                 </div>
                 <input type="file" id="fileInput" class="file-input" multiple accept=".pdf,.jpg,.jpeg,.png">
             </div>
@@ -729,8 +818,22 @@
             <!-- File List -->
             <div class="file-list-container" id="fileListContainer" style="display: none;">
                 <div class="file-list-header">
-                    <h4>已選擇的檔案</h4>
-                    <span class="file-count" id="fileCount">0 個檔案</span>
+                    <div class="file-list-title">
+                        <h4>已選擇的檔案</h4>
+                        <span class="file-count" id="fileCount">0 個檔案</span>
+                    </div>
+                    <!-- Size Progress Bar -->
+                    <div class="size-progress-container" id="sizeProgressContainer">
+                        <div class="size-progress-bar">
+                            <div class="size-progress-fill" id="sizeProgressFill"></div>
+                        </div>
+                        <div class="size-progress-text" id="sizeProgressText">0 MB / 10 MB</div>
+                    </div>
+                </div>
+                <!-- Size Warning -->
+                <div class="size-warning" id="sizeWarning" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                    <span id="sizeWarningText">檔案總大小超過限制！請移除部分檔案</span>
                 </div>
                 <div class="file-list" id="fileList"></div>
             </div>
@@ -813,8 +916,8 @@
             WEBHOOK_URL: 'https://maxai-tech.app.n8n.cloud/webhook/kb-ai-upload',
             SUPABASE_URL: 'https://drrdcsbwfbtgxntyfjjb.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycmRjc2J3ZmJ0Z3hudHlmampiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNjkxOTgsImV4cCI6MjA4MDk0NTE5OH0.Up0n7ZUmsZ5OwJjFHl7zimxFA7DYSm-EMdCmm26843s',
-            MAX_FILES: 20,
-            MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+            MAX_FILES: 10,
+            MAX_TOTAL_SIZE: 10 * 1024 * 1024, // 10MB total limit
             POLL_INTERVAL: 3000, // 3 seconds
             INITIAL_DELAY: 2000, // 2 seconds delay before first poll
             MAX_POLL_ATTEMPTS: 120 // 6 minutes max
@@ -872,23 +975,25 @@
         document.getElementById('downloadRental').addEventListener('click', () => downloadExcel('rental'));
         document.getElementById('downloadGeneral').addEventListener('click', () => downloadExcel('general'));
 
+        // Helper function to calculate total size
+        function getTotalSize() {
+            return selectedFiles.reduce((total, file) => total + file.size, 0);
+        }
+
         // Functions
         function handleFiles(files) {
             const fileArray = Array.from(files);
             
             if (selectedFiles.length + fileArray.length > CONFIG.MAX_FILES) {
-                showError(`最多只能上傳 ${CONFIG.MAX_FILES} 個檔案`);
+                showError(`最多只能上傳 ${CONFIG.MAX_FILES} 個檔案，請減少檔案數量`);
                 return;
             }
 
+            let hasError = false;
             fileArray.forEach(file => {
-                if (file.size > CONFIG.MAX_FILE_SIZE) {
-                    showError(`檔案 ${file.name} 超過 10MB 限制`);
-                    return;
-                }
-
                 if (!file.type.match('application/pdf|image/jpeg|image/png')) {
-                    showError(`檔案 ${file.name} 格式不支援`);
+                    showError(`檔案「${file.name}」格式不支援，請上傳 PDF、JPG 或 PNG`);
+                    hasError = true;
                     return;
                 }
 
@@ -896,10 +1001,15 @@
             });
 
             updateFileList();
-            hideError();
+            if (!hasError) hideError();
         }
 
         function updateFileList() {
+            const sizeProgressFill = document.getElementById('sizeProgressFill');
+            const sizeProgressText = document.getElementById('sizeProgressText');
+            const sizeWarning = document.getElementById('sizeWarning');
+            const sizeWarningText = document.getElementById('sizeWarningText');
+
             if (selectedFiles.length === 0) {
                 fileListContainer.style.display = 'none';
                 submitBtn.disabled = true;
@@ -909,8 +1019,48 @@
 
             fileListContainer.style.display = 'block';
             fileCount.textContent = `${selectedFiles.length} 個檔案`;
-            submitBtn.disabled = false;
-            submitBtn.textContent = `開始處理 (${selectedFiles.length} 個檔案)`;
+
+            // Calculate total size
+            const totalSize = getTotalSize();
+            const totalSizeMB = (totalSize / 1024 / 1024).toFixed(1);
+            const maxSizeMB = (CONFIG.MAX_TOTAL_SIZE / 1024 / 1024).toFixed(0);
+            const percentage = Math.min((totalSize / CONFIG.MAX_TOTAL_SIZE) * 100, 100);
+            const remainingMB = Math.max(0, (CONFIG.MAX_TOTAL_SIZE - totalSize) / 1024 / 1024).toFixed(1);
+
+            // Update progress bar
+            sizeProgressFill.style.width = `${percentage}%`;
+            sizeProgressText.textContent = `${totalSizeMB} MB / ${maxSizeMB} MB`;
+
+            // Check if over limit
+            const isOverLimit = totalSize > CONFIG.MAX_TOTAL_SIZE;
+            const isNearLimit = percentage >= 80;
+
+            // Update styles based on status
+            sizeProgressFill.classList.remove('warning', 'danger');
+            sizeProgressText.classList.remove('warning', 'danger');
+            sizeWarning.classList.remove('danger');
+
+            if (isOverLimit) {
+                sizeProgressFill.classList.add('danger');
+                sizeProgressText.classList.add('danger');
+                sizeWarning.classList.add('danger');
+                sizeWarning.style.display = 'flex';
+                const overBy = ((totalSize - CONFIG.MAX_TOTAL_SIZE) / 1024 / 1024).toFixed(1);
+                sizeWarningText.textContent = `檔案總大小超過限制！請移除 ${overBy} MB 的檔案`;
+                submitBtn.disabled = true;
+                submitBtn.textContent = '檔案總大小超過限制';
+            } else if (isNearLimit) {
+                sizeProgressFill.classList.add('warning');
+                sizeProgressText.classList.add('warning');
+                sizeWarning.style.display = 'flex';
+                sizeWarningText.textContent = `接近上限，剩餘 ${remainingMB} MB 可用`;
+                submitBtn.disabled = false;
+                submitBtn.textContent = `開始處理 (${selectedFiles.length} 個檔案)`;
+            } else {
+                sizeWarning.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.textContent = `開始處理 (${selectedFiles.length} 個檔案)`;
+            }
 
             fileList.innerHTML = selectedFiles.map((file, index) => `
                 <div class="file-item fade-in">
