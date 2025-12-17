@@ -1025,7 +1025,7 @@
         uploadZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
-        // Upload zone drag events (keep for visual feedback on the zone itself)
+        // Upload zone drag events (visual feedback only, no file handling)
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZone.classList.add('dragover');
@@ -1035,11 +1035,7 @@
             uploadZone.classList.remove('dragover');
         });
 
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            handleFiles(e.dataTransfer.files);
-        });
+        // Note: uploadZone drop is handled by document drop to avoid duplicate file handling
 
         // =====================================================
         // FULL PAGE DRAG & DROP
@@ -1072,6 +1068,7 @@
 
         document.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
             dragCounter = 0;
             dropOverlay.classList.remove('active');
             uploadZone.classList.remove('dragover');
