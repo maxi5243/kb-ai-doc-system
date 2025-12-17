@@ -635,6 +635,67 @@
             display: block;
         }
 
+        /* Full Page Drop Overlay */
+        .drop-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(139, 115, 85, 0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            pointer-events: none;
+        }
+
+        .drop-overlay.active {
+            display: flex;
+        }
+
+        .drop-overlay-content {
+            text-align: center;
+            color: white;
+            animation: dropPulse 1.5s ease-in-out infinite;
+        }
+
+        .drop-overlay-icon {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            border: 3px dashed white;
+        }
+
+        .drop-overlay-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: white;
+        }
+
+        .drop-overlay h2 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        .drop-overlay p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        @keyframes dropPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -774,6 +835,17 @@
     </style>
 </head>
 <body>
+    <!-- Full Page Drop Overlay -->
+    <div class="drop-overlay" id="dropOverlay">
+        <div class="drop-overlay-content">
+            <div class="drop-overlay-icon">
+                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            </div>
+            <h2>放開以上傳檔案</h2>
+            <p>支援 PDF、JPG、PNG 格式</p>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-content">
@@ -953,6 +1025,7 @@
         uploadZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
+        // Upload zone drag events (keep for visual feedback on the zone itself)
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadZone.classList.add('dragover');
@@ -966,6 +1039,53 @@
             e.preventDefault();
             uploadZone.classList.remove('dragover');
             handleFiles(e.dataTransfer.files);
+        });
+
+        // =====================================================
+        // FULL PAGE DRAG & DROP
+        // =====================================================
+        const dropOverlay = document.getElementById('dropOverlay');
+        let dragCounter = 0; // Counter to handle nested elements
+
+        // Prevent default drag behaviors on the whole document
+        document.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragCounter++;
+            // Only show overlay if dragging files
+            if (e.dataTransfer.types.includes('Files')) {
+                dropOverlay.classList.add('active');
+            }
+        });
+
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dragCounter--;
+            // Only hide when truly leaving the window
+            if (dragCounter === 0) {
+                dropOverlay.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            dropOverlay.classList.remove('active');
+            uploadZone.classList.remove('dragover');
+            
+            // Handle the dropped files
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+
+        // Reset counter when drag ends (e.g., pressing Escape)
+        document.addEventListener('dragend', () => {
+            dragCounter = 0;
+            dropOverlay.classList.remove('active');
         });
 
         submitBtn.addEventListener('click', startProcessing);
