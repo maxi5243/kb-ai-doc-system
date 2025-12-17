@@ -1289,6 +1289,8 @@
         async function pollForResults(batchId, totalFiles) {
             const maxAttempts = CONFIG.MAX_POLL_ATTEMPTS;
             let attempts = 0;
+            
+            console.log('Starting poll for batch:', batchId, 'totalFiles:', totalFiles);
 
             while (attempts < maxAttempts) {
                 attempts++;
@@ -1302,22 +1304,27 @@
                         .maybeSingle();
 
                     if (error) {
+                        console.log('Poll error:', error);
                         await sleep(CONFIG.POLL_INTERVAL);
                         continue;
                     }
 
                     // 如果記錄不存在
                     if (!data) {
+                        console.log('No data found for batch:', batchId);
                         await sleep(CONFIG.POLL_INTERVAL);
                         continue;
                     }
 
                     const processedFiles = data.processed_files || 0;
                     const status = data.status;
+                    const dbTotalFiles = data.total_files || totalFiles;
                     
-                    // Update progress based on processed files
-                    const progressPercent = Math.min(30 + Math.round((processedFiles / totalFiles) * 60), 90);
-                    updateProgress(progressPercent, '處理中...', `已處理 ${processedFiles}/${totalFiles} 個檔案`);
+                    console.log('Poll result:', { processedFiles, status, dbTotalFiles, attempts });
+                    
+                    // Update progress based on processed files from database
+                    const progressPercent = Math.min(30 + Math.round((processedFiles / dbTotalFiles) * 60), 90);
+                    updateProgress(progressPercent, '處理中...', `已處理 ${processedFiles}/${dbTotalFiles} 個檔案`);
 
                     if (status === 'completed') {
                         updateProgress(100, '處理完成！', '正在準備結果');
