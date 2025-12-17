@@ -990,8 +990,8 @@
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycmRjc2J3ZmJ0Z3hudHlmampiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzNjkxOTgsImV4cCI6MjA4MDk0NTE5OH0.Up0n7ZUmsZ5OwJjFHl7zimxFA7DYSm-EMdCmm26843s',
             MAX_FILES: 10,
             MAX_TOTAL_SIZE: 10 * 1024 * 1024, // 10MB total limit
-            POLL_INTERVAL: 3000, // 3 seconds
-            INITIAL_DELAY: 2000, // 2 seconds delay before first poll
+            POLL_INTERVAL: 1000, // 1 second - faster polling for progress updates
+            INITIAL_DELAY: 500, // 0.5 seconds delay before first poll
             MAX_POLL_ATTEMPTS: 120 // 6 minutes max
         };
 
