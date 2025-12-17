@@ -996,7 +996,7 @@
         };
 
         // Initialize Supabase client
-        const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         // State
         let selectedFiles = [];
@@ -1298,7 +1298,7 @@
                 
                 try {
                     // Query processing_status table
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('processing_status')
                         .select('*')
                         .eq('batch_id', batchId)
@@ -1356,28 +1356,28 @@
 
             try {
                 // Count bank statements
-                const { count: bankCount } = await supabase
+                const { count: bankCount } = await supabaseClient
                     .from('bank_statements')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.bank = bankCount || 0;
 
                 // Count rental leases
-                const { count: rentalCount } = await supabase
+                const { count: rentalCount } = await supabaseClient
                     .from('rental_leases')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.rental = rentalCount || 0;
 
                 // Count general invoices
-                const { count: generalCount } = await supabase
+                const { count: generalCount } = await supabaseClient
                     .from('general_invoices')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
                 counts.general = generalCount || 0;
 
                 // Count unprocessed files
-                const { count: unprocessedCount } = await supabase
+                const { count: unprocessedCount } = await supabaseClient
                     .from('unprocessed_files')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batchId);
@@ -1444,7 +1444,7 @@
 
             // Fetch bank statements for this batch
             if (currentCounts.bank > 0) {
-                const { data: bankRecords } = await supabase
+                const { data: bankRecords } = await supabaseClient
                     .from('bank_statements')
                     .select('id, source_filename')
                     .eq('batch_id', currentBatchId);
@@ -1466,7 +1466,7 @@
 
             // Fetch rental leases for this batch
             if (currentCounts.rental > 0) {
-                const { data: rentalRecords } = await supabase
+                const { data: rentalRecords } = await supabaseClient
                     .from('rental_leases')
                     .select('id, source_filename')
                     .eq('batch_id', currentBatchId);
@@ -1488,7 +1488,7 @@
 
             // Fetch general invoices for this batch
             if (currentCounts.general > 0) {
-                const { data: generalRecords } = await supabase
+                const { data: generalRecords } = await supabaseClient
                     .from('general_invoices')
                     .select('id, source_filename')
                     .eq('batch_id', currentBatchId);
@@ -1510,7 +1510,7 @@
 
             // Fetch unprocessed files for this batch
             if (currentCounts.unprocessed > 0) {
-                const { data: unprocessedRecords } = await supabase
+                const { data: unprocessedRecords } = await supabaseClient
                     .from('unprocessed_files')
                     .select('id, file_name, error_reason')
                     .eq('batch_id', currentBatchId);
@@ -1564,7 +1564,7 @@
                 }
 
                 // Fetch single record from Supabase
-                const { data: record, error } = await supabase
+                const { data: record, error } = await supabaseClient
                     .from(tableName)
                     .select('*')
                     .eq('id', recordId)
